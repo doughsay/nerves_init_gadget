@@ -7,6 +7,30 @@
     [`usb_gadget`](https://github.com/nerves-project/usb_gadget) library (when
     using a compatible Nerves system).
 
+## v0.7.0
+
+* New features
+  * Include `nerves_time`. So many people were adding `nerves_time` to their
+    projects that we decided to include it by default. This only brings in the
+    library. The default configuration will use NTP to get the time and advance
+    clock to at least the build time  by default.
+
+* Bug fixes
+  * It was possible for the SSH daemon to crash and not be restarted. The ssh
+    daemon process is now linked to a GenServer here so that this project's
+    supervisor can restart it on crashes.
+
+## v0.6.0
+
+* Enhancements
+  * Don't override IP address parameters if assigned in the `nerves_network`
+    config. This fixes confusion on which config wins with network configuration
+    since `nerves_init_gadget` does some configuration as a convenience. The
+    answer is that `nerves_network` wins.
+  * Register DNS hosts to get the local and peer IP addresses on USB gadget mode
+    connections. For example, if using `usb0`, then `peer.usb0.lan` refers to
+    the computer connected to the device (like your laptop)
+
 ## v0.5.2
 
 * Enhancements

@@ -1,5 +1,6 @@
 # nerves_init_gadget
 
+[![CircleCI](https://circleci.com/gh/nerves-project/nerves_init_gadget.svg?style=svg)](https://circleci.com/gh/nerves-project/nerves_init_gadget)
 [![Hex version](https://img.shields.io/hexpm/v/nerves_init_gadget.svg "Hex version")](https://hex.pm/packages/nerves_init_gadget)
 
 This project provides the basics for getting started with Nerves. This includes
@@ -8,7 +9,7 @@ things that make using Nerves a little better. At some point your project may
 outgrow `nerves_init_gadget` and when that happens, you can use it as an
 example.
 
-By design, this project is mostly dependences and only a little "glue" code.
+By design, this project is mostly dependencies and only a little "glue" code.
 Here's a summary of what you get:
 
 * Basic network initialization for USB gadget devices (Raspberry Pi Zero and
@@ -18,6 +19,8 @@ Here's a summary of what you get:
 * Device detection, filesystem mounting, and basic device control from
   `nerves_runtime`
 * Over-the-air firmware updates using `nerves_firmware_ssh`
+* System clock initialization and NTP support from
+  [nerves_time](https://github.com/fhunleth/nerves_time)
 * Easy setup of Erlang distribution to support remsh, Observer and other debug
   and tracing tools
 * Access to the IEx console via `ssh` and transfer files with `sftp`
@@ -72,16 +75,20 @@ Pi Zero and Beaglebone Black, `"usb0"` is a virtual Ethernet device going over
 USB. For other boards, `"eth0"` is the wired Ethernet interface and `"wlan0"` is
 the Wireless interface.
 
-The next key is the `address_method`. If using `"usb0"`, your choices are
-`:linklocal` or `:dhcpd`. The former configures the device with a [link-local
-address](https://en.wikipedia.org/wiki/Link-local_address) and the latter
-configures a static IP address and starts a DHCP server that gives an address to
-your computer. We're having better luck with DHCP than link-local support on
-laptops. If you're using a wired or wireless Ethernet interface, you can use
-`:linklocal` or `:dhcpd` if you'd like or you can use `:dhcp` to have your
-device get it's own IP address. The configuration is done via `nerves_network`
-so when you start getting too fancy, you may need to consult the documentation
-there.
+The next key is the `address_method`. It specifies how the Ethernet interface
+should get its IP address. Set it as follows:
+
+* `"usb0"` - Set to `:dhcpd` (note the `d` at the end). This assigns an IP
+  address to the device and uses DHCP to give your computer an IP address for
+  the other end of the cable. You can also use `:linklocal` for an IPv4
+  [link-local addresses](https://en.wikipedia.org/wiki/Link-local_address) if
+  you know what you're doing.
+* `"eth0"` and `"wlan0"` - Set to `:dhcp` and the device will use DHCP to get
+  an IP address
+
+The configuration specified here is passed on to `nerves_network`, so consult
+[its documentation](https://hexdocs.pm/nerves_network/readme.html#content) if
+you'd like to configure the network in a different way.
 
 See the [configuration](#configuration) section below for the other parameters.
 
@@ -131,7 +138,7 @@ assume that it's around, update your `mix.exs` deps with it too:
 def deps do
   [
     {:shoehorn, "~> 0.4"},
-    {:nerves_init_gadget, "~> 0.3"}
+    {:nerves_init_gadget, "~> 0.6"}
   ]
 end
 ```
@@ -239,26 +246,24 @@ this network interface between unplugging and replugging.
 If the network still doesn't work, check that the virtual serial port to the
 device works and see the troubleshooting section.
 
-To update firmware from now on, just run the following:
+`ssh` is used to update firmware from now on. A script is available to simplify
+its invocation. Generate it by running:
 
 ```sh
-MIX_TARGET=rpi0 mix firmware.push nerves.local
+mix firmware.gen.script
 ```
 
-Change `MIX_TARGET` to whatever you're using to build the firmware.  Assuming
-everything completes successfully, the device will reboot with the new firmware.
+Once you have the `upload.sh` script, run it after after `mix firmware` to
+update your device:
 
-If you have a password-protected `ssh` private key, `mix firmware.push`
-currently isn't able to prompt for the password or use the `ssh-agent`. This
-means that you either need to pass your password in cleartext on the commandline
-(ugh), create a new public/private key pair, or use commandline `ssh`. For
-commandline `ssh`, take a look at the `upload.sh` script from
-[nerves_firmware_ssh](https://github.com/fhunleth/nerves_firmware_ssh) for an
-example.
+```sh
+export MIX_TARGET=rpi0
+./upload.sh
+```
 
-If you have your private key stored in a file with a different name than
-`id_dsa`, `id_rsa`, or `identity`, chances are that `mix firmware push` will not
-find them.  Use `upload.sh` in this case as well.
+Change `MIX_TARGET` to whatever you're using to build the firmware. You can also
+specify the firmware file and device hostname as parameters. Assuming the script
+completes successfully, the device will reboot with the new firmware.
 
 ## Configuration
 
@@ -296,8 +301,10 @@ specify the following:
 * `:dhcp` - send a DHCP discovery request on the network to get assigned an IP
   address
 * `:dhcpd` - set an automatically calculated IP address and start a DHCP server
-  to assign an address to the other side of the link. See
-  [OneDHCPD](https://github.com/fhunleth/one_dhcpd)
+  to assign an address to the other side of the link. Names are added to
+  Erlang's DNS so that you can refer to the computer on the other side of the link
+  as `peer.usb0.lan`. Substitute `usb0` for the interface if yours is different.
+  See [OneDHCPD](https://github.com/fhunleth/one_dhcpd).
 
 ### `:mdns_domain`
 
