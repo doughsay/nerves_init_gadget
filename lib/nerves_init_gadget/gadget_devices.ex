@@ -12,6 +12,8 @@ defmodule Nerves.InitGadget.GadgetDevices do
   end
 
   def init(_opts) do
+    :os.cmd('mount -t configfs none /sys/kernel/config')
+
     # Only set up gadget devices if USB gadget configfs is available so that
     # nerves_init_gadget works on targets that don't have USB OTG ports or
     # for older systems that have the gadget devices compiled into the kernel.
